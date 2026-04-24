@@ -16,6 +16,9 @@ const scanQrBtn = document.getElementById("scanQrBtn");
 const recordForm = document.getElementById("recordForm");
 const photoInput = document.getElementById("photoInput");
 const photoFileName = document.getElementById("photoFileName");
+const qrCardResult = document.getElementById("qrCardResult");
+const qrCardPreview = document.getElementById("qrCardPreview");
+const qrCardDownload = document.getElementById("qrCardDownload");
 const scannerStatus = document.getElementById("scannerStatus");
 const scannerVideo = document.getElementById("scannerVideo");
 const serialInput = document.getElementById("serialInput");
@@ -37,8 +40,45 @@ function hideModalInternal() {
   modal.hidden = true;
   recordForm.reset();
   photoFileName.textContent = "Nenhum arquivo selecionado";
+  qrCardResult.hidden = true;
+  qrCardPreview.src = "";
+  qrCardDownload.href = "#";
   editingRecordId = "";
   setModalMode(false);
+}
+
+function safeFilePart(value) {
+  return String(value || "serial")
+    .trim()
+    .replace(/[^a-zA-Z0-9-_]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 48) || "serial";
+}
+
+async function generateQrCardForSerial(serial) {
+  const normalized = String(serial || "").trim();
+  if (!normalized) {
+    return;
+  }
+
+  try {
+    const result = await api("/api/serial-card", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ serial: normalized }),
+    });
+
+    if (!result.imageUrl) {
+      return;
+    }
+
+    qrCardPreview.src = result.imageUrl;
+    qrCardDownload.href = result.imageUrl;
+    qrCardDownload.download = `qr-${safeFilePart(normalized)}.png`;
+    qrCardResult.hidden = false;
+  } catch {
+    setFeedback("Serial lido, mas falhou ao gerar a imagem do QR.", true);
+  }
 }
 
 function hideScannerInternal() {
@@ -177,6 +217,7 @@ async function scanFrame() {
         serialInput.value = rawValue;
         scannerStatus.textContent = "QR lido com sucesso.";
         setFeedback("Serial lido automaticamente pela camera.");
+        await generateQrCardForSerial(rawValue);
         closeScannerModal();
         return;
       }
@@ -383,6 +424,7 @@ photoInput.addEventListener("change", async () => {
     });
     serialInput.value = result.serial || "";
     setFeedback("Serial lido automaticamente pelo QR.");
+    await generateQrCardForSerial(result.serial || "");
   } catch (error) {
     setFeedback(`Nao foi possivel ler o QR: ${error.message}`, true);
   }
@@ -428,6 +470,9 @@ recordsList.addEventListener("click", async (event) => {
     recordForm.elements.dvrLogin.value = record.dvrLogin || "";
     recordForm.elements.dvrPassword.value = record.dvrPassword || "";
     photoFileName.textContent = "Nenhum arquivo selecionado";
+    qrCardResult.hidden = true;
+    qrCardPreview.src = "";
+    qrCardDownload.href = "#";
     openModal();
     return;
   }

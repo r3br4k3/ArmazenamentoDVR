@@ -4,6 +4,7 @@ const path = require("path");
 const fs = require("fs");
 const jsQR = require("jsqr");
 const QrCode = require("qrcode-reader");
+const QRCode = require("qrcode");
 const sharp = require("sharp");
 const {
   MultiFormatReader,
@@ -50,6 +51,60 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use("/uploads", express.static(uploadsDir));
 app.use(express.static(path.join(__dirname, "public")));
+
+function escapeXml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
+async function createSerialQrCard(serial) {
+  const normalizedSerial = String(serial || "").trim();
+  const qrBuffer = await QRCode.toBuffer(normalizedSerial, {
+    width: 540,
+    margin: 1,
+    errorCorrectionLevel: "M",
+    color: {
+      dark: "#0a2c63",
+      light: "#ffffff",
+    },
+  });
+
+  const qrMeta = await sharp(qrBuffer).metadata();
+  const qrWidth = qrMeta.width || 540;
+  const qrHeight = qrMeta.height || 540;
+  const labelHeight = 110;
+
+  const labelSvg = Buffer.from(`
+    <svg xmlns="http://www.w3.org/2000/svg" width="${qrWidth}" height="${labelHeight}">
+      <rect width="100%" height="100%" fill="#0f244a"/>
+      <text x="50%" y="58%" text-anchor="middle" font-family="Manrope, Arial, sans-serif" font-size="34" font-weight="700" fill="#eaf3ff">${escapeXml(normalizedSerial)}</text>
+    </svg>
+  `);
+
+  const cardBuffer = await sharp({
+    create: {
+      width: qrWidth,
+      height: qrHeight + labelHeight,
+      channels: 4,
+      background: "#ffffff",
+    },
+  })
+    .composite([
+      { input: qrBuffer, top: 0, left: 0 },
+      { input: labelSvg, top: qrHeight, left: 0 },
+    ])
+    .png()
+    .toBuffer();
+
+  const fileName = `serial-card-${Date.now()}-${uuidv4()}.png`;
+  const filePath = path.join(uploadsDir, fileName);
+  await fs.promises.writeFile(filePath, cardBuffer);
+  return `/uploads/${fileName}`;
+}
 
 function decodeQrFromBitmap(bitmap) {
   if (!bitmap || !bitmap.data || !bitmap.width || !bitmap.height) {
@@ -427,6 +482,22 @@ app.post("/api/scan-serial", upload.single("photo"), async (req, res) => {
     console.error("[QR] Erro no processamento:", err);
     fs.unlink(req.file.path, () => {});
     res.status(500).json({ message: "Falha ao ler QR da imagem" });
+  }
+});
+
+app.post("/api/serial-card", async (req, res) => {
+  const serial = String(req.body?.serial || "").trim();
+  if (!serial) {
+    res.status(400).json({ message: "Informe o serial para gerar o QR" });
+    return;
+  }
+
+  try {
+    const imageUrl = await createSerialQrCard(serial);
+    res.status(201).json({ serial, imageUrl });
+  } catch (error) {
+    console.error("[QR] Falha ao gerar imagem de card do serial:", error);
+    res.status(500).json({ message: "Falha ao gerar imagem do QR" });
   }
 });
 
