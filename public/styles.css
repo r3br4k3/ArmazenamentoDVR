@@ -50,6 +50,13 @@ body {
   position: relative;
 }
 
+@media (max-width: 600px) {
+  .container {
+    width: min(1100px, 96%);
+    margin: 16px auto 32px;
+  }
+}
+
 .topbar {
   display: grid;
   gap: 8px;
@@ -510,6 +517,10 @@ button:hover {
   }
 
   .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .records {
     grid-template-columns: 1fr;
   }
 
