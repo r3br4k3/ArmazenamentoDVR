@@ -16,9 +16,6 @@ const scanQrBtn = document.getElementById("scanQrBtn");
 const recordForm = document.getElementById("recordForm");
 const photoInput = document.getElementById("photoInput");
 const photoFileName = document.getElementById("photoFileName");
-const qrCardResult = document.getElementById("qrCardResult");
-const qrCardPreview = document.getElementById("qrCardPreview");
-const qrCardDownload = document.getElementById("qrCardDownload");
 const scannerStatus = document.getElementById("scannerStatus");
 const scannerVideo = document.getElementById("scannerVideo");
 const serialInput = document.getElementById("serialInput");
@@ -30,6 +27,7 @@ let scannerAnimationId = 0;
 let barcodeDetector = null;
 let deferredInstallPrompt = null;
 const overlayStack = [];
+let generatedQrCardUrl = "";
 
 function pushOverlayState(type) {
   overlayStack.push(type);
@@ -40,19 +38,9 @@ function hideModalInternal() {
   modal.hidden = true;
   recordForm.reset();
   photoFileName.textContent = "Nenhum arquivo selecionado";
-  qrCardResult.hidden = true;
-  qrCardPreview.src = "";
-  qrCardDownload.href = "#";
+  generatedQrCardUrl = "";
   editingRecordId = "";
   setModalMode(false);
-}
-
-function safeFilePart(value) {
-  return String(value || "serial")
-    .trim()
-    .replace(/[^a-zA-Z0-9-_]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 48) || "serial";
 }
 
 async function generateQrCardForSerial(serial) {
@@ -72,10 +60,8 @@ async function generateQrCardForSerial(serial) {
       return;
     }
 
-    qrCardPreview.src = result.imageUrl;
-    qrCardDownload.href = result.imageUrl;
-    qrCardDownload.download = `qr-${safeFilePart(normalized)}.png`;
-    qrCardResult.hidden = false;
+    generatedQrCardUrl = result.imageUrl;
+    photoFileName.textContent = "Imagem do DVR gerada pelo serial lido";
   } catch {
     setFeedback("Serial lido, mas falhou ao gerar a imagem do QR.", true);
   }
@@ -326,6 +312,8 @@ function applySearch() {
     return haystack.includes(term);
   });
 
+  filtered.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+
   drawRecords(recordsList, filtered, "Nenhum DVR encontrado na pesquisa.");
 }
 
@@ -413,6 +401,7 @@ photoInput.addEventListener("change", async () => {
   }
 
   photoFileName.textContent = photoInput.files[0].name;
+  generatedQrCardUrl = "";
 
   const scannerPayload = new FormData();
   scannerPayload.append("photo", photoInput.files[0]);
@@ -433,6 +422,10 @@ photoInput.addEventListener("change", async () => {
 recordForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   const body = new FormData(recordForm);
+  if (generatedQrCardUrl && !photoInput.files?.length) {
+    body.set("qrCardImageUrl", generatedQrCardUrl);
+  }
+
   const isEditing = Boolean(editingRecordId);
   const endpoint = isEditing ? `/api/records/${editingRecordId}` : "/api/records";
   const method = isEditing ? "PUT" : "POST";
@@ -469,10 +462,8 @@ recordsList.addEventListener("click", async (event) => {
     recordForm.elements.serial.value = record.serial || "";
     recordForm.elements.dvrLogin.value = record.dvrLogin || "";
     recordForm.elements.dvrPassword.value = record.dvrPassword || "";
+    generatedQrCardUrl = "";
     photoFileName.textContent = "Nenhum arquivo selecionado";
-    qrCardResult.hidden = true;
-    qrCardPreview.src = "";
-    qrCardDownload.href = "#";
     openModal();
     return;
   }

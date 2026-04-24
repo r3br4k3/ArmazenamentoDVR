@@ -52,6 +52,21 @@ app.use(express.urlencoded({ extended: true }));
 app.use("/uploads", express.static(uploadsDir));
 app.use(express.static(path.join(__dirname, "public")));
 
+function normalizePhotoUrl(value) {
+  const normalized = String(value || "").trim();
+  if (!normalized.startsWith("/uploads/")) {
+    return "";
+  }
+
+  const safeName = path.basename(normalized);
+  const filePath = path.join(uploadsDir, safeName);
+  if (!fs.existsSync(filePath)) {
+    return "";
+  }
+
+  return `/uploads/${safeName}`;
+}
+
 function escapeXml(value) {
   return String(value)
     .replace(/&/g, "&amp;")
@@ -527,7 +542,7 @@ app.post("/api/records", upload.single("photo"), async (req, res) => {
     serial,
     dvrLogin,
     dvrPassword,
-    photoUrl: req.file ? `/uploads/${req.file.filename}` : "",
+    photoUrl: req.file ? `/uploads/${req.file.filename}` : normalizePhotoUrl(payload.qrCardImageUrl),
     createdAt: new Date().toISOString(),
   };
 
@@ -580,6 +595,11 @@ app.put("/api/records/:id", upload.single("photo"), async (req, res) => {
       if (fs.existsSync(oldPhotoPath)) {
         fs.unlink(oldPhotoPath, () => {});
       }
+    }
+  } else {
+    const qrCardPhotoUrl = normalizePhotoUrl(payload.qrCardImageUrl);
+    if (qrCardPhotoUrl) {
+      photoUrl = qrCardPhotoUrl;
     }
   }
 
