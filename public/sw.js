@@ -1,4 +1,4 @@
-const CACHE_NAME = "mactel-login-dvrs-v1";
+const CACHE_NAME = "mactel-login-dvrs-v2";
 const APP_SHELL = [
   "/",
   "/index.html",
@@ -10,6 +10,8 @@ const APP_SHELL = [
   "/icons/apple-touch-icon.png",
   "/icons/favicon-64.png"
 ];
+
+const NETWORK_FIRST = new Set(["/", "/index.html", "/styles.css", "/app.js", "/manifest.webmanifest"]);
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -51,6 +53,19 @@ self.addEventListener("fetch", (event) => {
   if (request.mode === "navigate") {
     event.respondWith(
       fetch(request).catch(() => caches.match("/index.html"))
+    );
+    return;
+  }
+
+  if (NETWORK_FIRST.has(url.pathname)) {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          const cloned = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, cloned));
+          return response;
+        })
+        .catch(() => caches.match(request))
     );
     return;
   }
