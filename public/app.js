@@ -26,6 +26,72 @@ let scannerStream = null;
 let scannerAnimationId = 0;
 let barcodeDetector = null;
 let deferredInstallPrompt = null;
+const overlayStack = [];
+
+function pushOverlayState(type) {
+  overlayStack.push(type);
+  history.pushState({ overlay: type }, "");
+}
+
+function hideModalInternal() {
+  modal.hidden = true;
+  recordForm.reset();
+  photoFileName.textContent = "Nenhum arquivo selecionado";
+  editingRecordId = "";
+  setModalMode(false);
+}
+
+function hideScannerInternal() {
+  scannerModal.hidden = true;
+  stopScanner();
+}
+
+function hideImageInternal() {
+  imageModal.hidden = true;
+  imageModalPreview.src = "";
+}
+
+function closeTopOverlayFromHistory() {
+  const top = overlayStack.pop();
+  if (top === "scanner") {
+    hideScannerInternal();
+    return true;
+  }
+
+  if (top === "image") {
+    hideImageInternal();
+    return true;
+  }
+
+  if (top === "modal") {
+    hideModalInternal();
+    return true;
+  }
+
+  return false;
+}
+
+function closeOverlay(type) {
+  const top = overlayStack[overlayStack.length - 1];
+  if (top === type) {
+    history.back();
+    return;
+  }
+
+  if (type === "scanner") {
+    hideScannerInternal();
+    return;
+  }
+
+  if (type === "image") {
+    hideImageInternal();
+    return;
+  }
+
+  if (type === "modal") {
+    hideModalInternal();
+  }
+}
 
 function setFeedback(message, isError = false) {
   feedback.textContent = message;
@@ -61,6 +127,7 @@ async function registerServiceWorker() {
 
 function openModal() {
   modal.hidden = false;
+  pushOverlayState("modal");
 }
 
 function setModalMode(isEditing) {
@@ -75,11 +142,7 @@ function setModalMode(isEditing) {
 }
 
 function closeModal() {
-  modal.hidden = true;
-  recordForm.reset();
-  photoFileName.textContent = "Nenhum arquivo selecionado";
-  editingRecordId = "";
-  setModalMode(false);
+  closeOverlay("modal");
 }
 
 function stopScanner() {
@@ -97,8 +160,7 @@ function stopScanner() {
 }
 
 function closeScannerModal() {
-  scannerModal.hidden = true;
-  stopScanner();
+  closeOverlay("scanner");
 }
 
 async function scanFrame() {
@@ -153,9 +215,10 @@ async function openScannerModal() {
 
     scannerVideo.srcObject = scannerStream;
     await scannerVideo.play();
+    pushOverlayState("scanner");
     scannerAnimationId = requestAnimationFrame(scanFrame);
   } catch (error) {
-    closeScannerModal();
+    hideScannerInternal();
     setFeedback(`Nao foi possivel abrir a camera: ${error.message || "erro inesperado"}`, true);
   }
 }
@@ -164,11 +227,11 @@ function openImageModal(src, altText = "Imagem ampliada do DVR") {
   imageModalPreview.src = src;
   imageModalPreview.alt = altText;
   imageModal.hidden = false;
+  pushOverlayState("image");
 }
 
 function closeImageModal() {
-  imageModal.hidden = true;
-  imageModalPreview.src = "";
+  closeOverlay("image");
 }
 
 function escapeHtml(value) {
@@ -276,18 +339,15 @@ imageModal.addEventListener("click", (event) => {
 });
 
 document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape" && !scannerModal.hidden) {
-    closeScannerModal();
+  if (event.key === "Escape" && overlayStack.length > 0) {
+    history.back();
     return;
   }
+});
 
-  if (event.key === "Escape" && !imageModal.hidden) {
-    closeImageModal();
-    return;
-  }
-
-  if (event.key === "Escape" && !modal.hidden) {
-    closeModal();
+window.addEventListener("popstate", () => {
+  if (overlayStack.length > 0) {
+    closeTopOverlayFromHistory();
   }
 });
 
