@@ -1,11 +1,12 @@
 [
   {
     "id": "ae182f0c-cfdb-4ff8-afec-e95a140fcb7d",
-    "dvrName": "adf",
+    "dvrName": "adfadfadfadfadfadfadfadfadfadfadfadfadfadfadfadfadfadfadfadfadfadfadfadfadfadfadfadfadfadf",
     "serial": "FU2K4600025FP",
     "dvrLogin": "admin",
     "dvrPassword": "mactel3023",
     "photoUrl": "/uploads/1777033075024-c9678a90-2675-4af6-b141-f4cd8a8f4214.png",
-    "createdAt": "2026-04-24T12:17:55.025Z"
+    "createdAt": "2026-04-24T12:17:55.025Z",
+    "updatedAt": "2026-04-24T12:30:12.948Z"
   }
 ]
