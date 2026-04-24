@@ -5,7 +5,11 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "node server.js",
+    "build": "echo \"No build step required\""
+  },
+  "engines": {
+    "node": ">=18"
   },
   "keywords": [
     "intelbras",
