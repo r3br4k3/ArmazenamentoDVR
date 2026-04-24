@@ -29,7 +29,10 @@
             <h1>MACTEL LOGIN DVRs</h1>
             <p>Cadastro rapido de serial, login e senha via foto do QR.</p>
           </div>
-          <button id="installAppBtn" class="ghost install-btn" type="button" hidden>Instalar app</button>
+          <div class="topbar-actions">
+            <button id="exitAdminModeBtn" class="ghost admin-exit-btn" type="button" hidden>Sair do modo admin</button>
+            <button id="installAppBtn" class="ghost install-btn" type="button" hidden>Instalar app</button>
+          </div>
         </div>
       </header>
 
@@ -108,6 +111,35 @@
           <div class="delete-confirm-actions">
             <button id="cancelDeleteBtn" class="ghost" type="button">Cancelar</button>
             <button id="confirmDeleteBtn" type="button">Excluir DVR</button>
+          </div>
+        </article>
+      </section>
+
+      <section id="adminModal" class="modal" hidden>
+        <article class="modal-card panel admin-modal-card">
+          <div class="modal-head">
+            <h2>Painel Admin</h2>
+            <button id="closeAdminModalBtn" class="ghost" type="button">Fechar</button>
+          </div>
+          <p class="admin-intro">Usuarios podem ser banidos ou desbanidos. Fora do painel, os DVRs mostram os metadados do criador enquanto o modo admin estiver ativo.</p>
+          <p id="adminPanelMessage" class="feedback admin-feedback" role="status" aria-live="polite"></p>
+
+          <div class="admin-grid">
+            <section class="admin-section">
+              <div class="section-head">
+                <h3>Usuarios</h3>
+                <p>Usuarios ativos que podem ser banidos.</p>
+              </div>
+              <div id="adminUsersList" class="admin-list"></div>
+            </section>
+
+            <section class="admin-section">
+              <div class="section-head">
+                <h3>Usuarios banidos</h3>
+                <p>Usuarios bloqueados que podem ser desbanidos.</p>
+              </div>
+              <div id="adminBannedUsersList" class="admin-list"></div>
+            </section>
           </div>
         </article>
       </section>

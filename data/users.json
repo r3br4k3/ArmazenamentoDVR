@@ -1,1 +1,14 @@
-[]
+[
+  {
+    "deviceId": "86716481-407d-46b2-8457-c59f6b063452",
+    "deviceType": "pc",
+    "devicePlatform": "Windows",
+    "deviceModel": "Windows PC",
+    "deviceBrowser": "Chrome",
+    "deviceLabel": "PC Windows PC (Chrome)",
+    "rawUserAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36",
+    "isBanned": false,
+    "createdAt": "2026-04-24T14:37:24.700Z",
+    "lastSeenAt": "2026-04-24T14:44:48.764Z"
+  }
+]

@@ -305,6 +305,87 @@ button:hover {
   width: min(620px, 100%);
 }
 
+.admin-modal-card {
+  width: min(1100px, 100%);
+  display: grid;
+  gap: 16px;
+}
+
+.admin-intro {
+  margin: 0;
+  color: var(--muted);
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.admin-exit-btn {
+  border-color: rgba(255, 204, 102, 0.45);
+  background: rgba(255, 204, 102, 0.14);
+  color: #ffe7ad;
+}
+
+.admin-feedback {
+  margin: 0;
+}
+
+.admin-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.admin-section {
+  display: grid;
+  gap: 12px;
+}
+
+.admin-list {
+  display: grid;
+  gap: 12px;
+  max-height: min(60vh, 720px);
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.admin-card {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(4, 13, 28, 0.72);
+}
+
+.admin-card.is-banned {
+  border-color: rgba(255, 110, 110, 0.55);
+  background: rgba(72, 18, 18, 0.38);
+}
+
+.admin-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.admin-card-top h4 {
+  margin: 0;
+  min-width: 0;
+  flex: 1;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.admin-meta {
+  font-size: 0.88rem;
+}
+
 .delete-confirm-card {
   display: grid;
   gap: 12px;
@@ -519,6 +600,22 @@ button:hover {
   .topbar-main {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .topbar-actions {
+    justify-content: stretch;
+  }
+
+  .topbar-actions > button {
+    width: 100%;
+  }
+
+  .admin-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-card-top {
+    flex-direction: column;
   }
 
   .form-grid {

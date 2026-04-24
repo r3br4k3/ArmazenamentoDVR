@@ -1,4 +1,4 @@
-const CACHE_NAME = "mactel-login-dvrs-v10";
+const CACHE_NAME = "mactel-login-dvrs-v12";
 const APP_SHELL = [
   "/",
   "/index.html",

@@ -21,6 +21,7 @@ const { readJson, writeJson } = require("./lib/store");
 const app = express();
 const PORT = process.env.PORT || 3000;
 const ADMIN_PASSWORD = "p3p3r0n1";
+const ADMIN_PANEL_PASSWORD = "william200";
 
 const uploadsDir = path.join(__dirname, "uploads");
 if (!fs.existsSync(uploadsDir)) {
@@ -66,6 +67,157 @@ function normalizePhotoUrl(value) {
   }
 
   return `/uploads/${safeName}`;
+}
+
+function readUsers() {
+  const users = readJson("users.json");
+  return Array.isArray(users) ? users : [];
+}
+
+function writeUsers(users) {
+  writeJson("users.json", users);
+}
+
+function parseDeviceInfo(req) {
+  const userAgent = String(req.get("user-agent") || "").trim();
+  const chPlatform = String(req.get("sec-ch-ua-platform") || "")
+    .replace(/"/g, "")
+    .trim();
+  const chModel = String(req.get("sec-ch-ua-model") || "")
+    .replace(/"/g, "")
+    .trim();
+  const chMobile = String(req.get("sec-ch-ua-mobile") || "")
+    .replace(/"/g, "")
+    .trim();
+
+  const lowerUa = userAgent.toLowerCase();
+  const isMobile = chMobile === "?1" || /android|iphone|ipad|mobile/.test(lowerUa);
+  const type = isMobile ? "celular" : "pc";
+
+  let platform = chPlatform || "Desconhecido";
+  if (platform === "Desconhecido") {
+    if (/iphone|ipad|ios/.test(lowerUa)) platform = "iOS";
+    else if (/android/.test(lowerUa)) platform = "Android";
+    else if (/windows/.test(lowerUa)) platform = "Windows";
+    else if (/mac os|macintosh/.test(lowerUa)) platform = "macOS";
+    else if (/linux/.test(lowerUa)) platform = "Linux";
+  }
+
+  const browser = /edg\//i.test(userAgent)
+    ? "Edge"
+    : /chrome\//i.test(userAgent)
+      ? "Chrome"
+      : /firefox\//i.test(userAgent)
+        ? "Firefox"
+        : /safari\//i.test(userAgent) && !/chrome\//i.test(userAgent)
+          ? "Safari"
+          : "Navegador desconhecido";
+
+  const model = chModel || (isMobile ? platform : `${platform} PC`);
+  const label = `${type === "celular" ? "Celular" : "PC"} ${model} (${browser})`;
+
+  return {
+    type,
+    platform,
+    model,
+    browser,
+    label,
+    rawUserAgent: userAgent,
+  };
+}
+
+function ensureUser(deviceId, deviceInfo) {
+  const normalizedDeviceId = String(deviceId || "").trim();
+  if (!normalizedDeviceId) {
+    return null;
+  }
+
+  const users = readUsers();
+  const now = new Date().toISOString();
+  const idx = users.findIndex((user) => String(user.deviceId || "").trim() === normalizedDeviceId);
+
+  if (idx === -1) {
+    const createdUser = {
+      deviceId: normalizedDeviceId,
+      deviceType: deviceInfo.type,
+      devicePlatform: deviceInfo.platform,
+      deviceModel: deviceInfo.model,
+      deviceBrowser: deviceInfo.browser,
+      deviceLabel: deviceInfo.label,
+      rawUserAgent: deviceInfo.rawUserAgent,
+      isBanned: false,
+      createdAt: now,
+      lastSeenAt: now,
+    };
+    users.push(createdUser);
+    writeUsers(users);
+    return createdUser;
+  }
+
+  const updatedUser = {
+    ...users[idx],
+    deviceType: deviceInfo.type,
+    devicePlatform: deviceInfo.platform,
+    deviceModel: deviceInfo.model,
+    deviceBrowser: deviceInfo.browser,
+    deviceLabel: deviceInfo.label,
+    rawUserAgent: deviceInfo.rawUserAgent,
+    lastSeenAt: now,
+  };
+  users[idx] = updatedUser;
+  writeUsers(users);
+  return updatedUser;
+}
+
+function getUserByDeviceId(deviceId) {
+  const normalizedDeviceId = String(deviceId || "").trim();
+  if (!normalizedDeviceId) {
+    return null;
+  }
+
+  return readUsers().find((user) => String(user.deviceId || "").trim() === normalizedDeviceId) || null;
+}
+
+function assertUserNotBanned(deviceId) {
+  const user = getUserByDeviceId(deviceId);
+  if (user?.isBanned) {
+    const error = new Error("Este usuario esta banido e nao pode alterar DVRs.");
+    error.statusCode = 403;
+    throw error;
+  }
+}
+
+function getAdminPanelPassword(req) {
+  return String(req.get("x-admin-password") || req.body?.adminPanelPassword || "").trim();
+}
+
+function requireAdminPanel(req, res) {
+  if (getAdminPanelPassword(req) !== ADMIN_PANEL_PASSWORD) {
+    res.status(403).json({ message: "Senha admin invalida." });
+    return false;
+  }
+
+  return true;
+}
+
+function attachCreatorMetadata(records) {
+  const usersByDeviceId = new Map(
+    readUsers().map((user) => [String(user.deviceId || "").trim(), user])
+  );
+
+  return records.map((record) => {
+    const creatorDeviceId = String(record.creatorDeviceId || "").trim();
+    const owner = usersByDeviceId.get(creatorDeviceId);
+
+    return {
+      ...record,
+      creatorDeviceId,
+      creatorDeviceLabel: record.creatorDeviceLabel || owner?.deviceLabel || "",
+      creatorDeviceModel: record.creatorDeviceModel || owner?.deviceModel || "",
+      creatorDevicePlatform: record.creatorDevicePlatform || owner?.devicePlatform || "",
+      creatorDeviceType: record.creatorDeviceType || owner?.deviceType || "",
+    };
+  });
 }
 
 function canManageRecord(record, deviceId, adminPassword) {
@@ -484,7 +636,67 @@ async function extractQrDataFromFile(filePath) {
 app.get("/api/records", (_req, res) => {
   const records = readJson("records.json");
   const sorted = records.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
-  res.json({ records: sorted });
+  res.json({ records: attachCreatorMetadata(sorted) });
+});
+
+app.get("/api/admin/overview", (req, res) => {
+  if (!requireAdminPanel(req, res)) {
+    return;
+  }
+
+  const users = readUsers().sort((a, b) => {
+    const left = a.lastSeenAt || a.createdAt || "";
+    const right = b.lastSeenAt || b.createdAt || "";
+    return left < right ? 1 : -1;
+  });
+  const records = attachCreatorMetadata(readJson("records.json")).sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+  res.json({ users, records });
+});
+
+app.post("/api/admin/users/:deviceId/ban", (req, res) => {
+  if (!requireAdminPanel(req, res)) {
+    return;
+  }
+
+  const targetDeviceId = String(req.params.deviceId || "").trim();
+  const users = readUsers();
+  const idx = users.findIndex((user) => String(user.deviceId || "").trim() === targetDeviceId);
+
+  if (idx === -1) {
+    res.status(404).json({ message: "Usuario nao encontrado." });
+    return;
+  }
+
+  users[idx] = {
+    ...users[idx],
+    isBanned: true,
+    bannedAt: new Date().toISOString(),
+  };
+  writeUsers(users);
+  res.json({ user: users[idx] });
+});
+
+app.post("/api/admin/users/:deviceId/unban", (req, res) => {
+  if (!requireAdminPanel(req, res)) {
+    return;
+  }
+
+  const targetDeviceId = String(req.params.deviceId || "").trim();
+  const users = readUsers();
+  const idx = users.findIndex((user) => String(user.deviceId || "").trim() === targetDeviceId);
+
+  if (idx === -1) {
+    res.status(404).json({ message: "Usuario nao encontrado." });
+    return;
+  }
+
+  users[idx] = {
+    ...users[idx],
+    isBanned: false,
+    unbannedAt: new Date().toISOString(),
+  };
+  writeUsers(users);
+  res.json({ user: users[idx] });
 });
 
 app.post("/api/scan-serial", upload.single("photo"), async (req, res) => {
@@ -537,6 +749,14 @@ app.post("/api/records", upload.single("photo"), async (req, res) => {
   const dvrLogin = String(payload.dvrLogin || "").trim() || "admin";
   const dvrPassword = String(payload.dvrPassword || "").trim() || "mactel3023";
   const deviceId = String(payload.deviceId || "").trim();
+  const creatorDevice = ensureUser(deviceId, parseDeviceInfo(req));
+
+  try {
+    assertUserNotBanned(deviceId);
+  } catch (error) {
+    res.status(error.statusCode || 403).json({ message: error.message });
+    return;
+  }
 
   if (!serial && req.file) {
     try {
@@ -559,6 +779,10 @@ app.post("/api/records", upload.single("photo"), async (req, res) => {
     dvrPassword,
     photoUrl: req.file ? `/uploads/${req.file.filename}` : normalizePhotoUrl(payload.qrCardImageUrl),
     creatorDeviceId: deviceId,
+    creatorDeviceLabel: creatorDevice?.deviceLabel || "",
+    creatorDeviceModel: creatorDevice?.deviceModel || "",
+    creatorDevicePlatform: creatorDevice?.devicePlatform || "",
+    creatorDeviceType: creatorDevice?.deviceType || "",
     createdAt: new Date().toISOString(),
   };
 
@@ -586,6 +810,14 @@ app.put("/api/records/:id", upload.single("photo"), async (req, res) => {
   const dvrPassword = String(payload.dvrPassword || "").trim() || "mactel3023";
   const deviceId = String(payload.deviceId || "").trim();
   const adminPassword = String(payload.adminPassword || "").trim();
+  const currentDevice = ensureUser(deviceId, parseDeviceInfo(req));
+
+  try {
+    assertUserNotBanned(deviceId);
+  } catch (error) {
+    res.status(error.statusCode || 403).json({ message: error.message });
+    return;
+  }
 
   if (!canManageRecord(current, deviceId, adminPassword)) {
     res.status(403).json({
@@ -637,6 +869,10 @@ app.put("/api/records/:id", upload.single("photo"), async (req, res) => {
     dvrPassword,
     photoUrl,
     creatorDeviceId: current.creatorDeviceId || deviceId,
+    creatorDeviceLabel: current.creatorDeviceLabel || currentDevice?.deviceLabel || "",
+    creatorDeviceModel: current.creatorDeviceModel || currentDevice?.deviceModel || "",
+    creatorDevicePlatform: current.creatorDevicePlatform || currentDevice?.devicePlatform || "",
+    creatorDeviceType: current.creatorDeviceType || currentDevice?.deviceType || "",
     updatedAt: new Date().toISOString(),
   };
 
@@ -658,6 +894,15 @@ app.delete("/api/records/:id", (req, res) => {
   const current = records[idx];
   const deviceId = String(req.body?.deviceId || "").trim();
   const adminPassword = String(req.body?.adminPassword || "").trim();
+
+  ensureUser(deviceId, parseDeviceInfo(req));
+
+  try {
+    assertUserNotBanned(deviceId);
+  } catch (error) {
+    res.status(error.statusCode || 403).json({ message: error.message });
+    return;
+  }
 
   if (!canManageRecord(current, deviceId, adminPassword)) {
     res.status(403).json({

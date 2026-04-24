@@ -1,12 +1,16 @@
 [
   {
-    "id": "ae182f0c-cfdb-4ff8-afec-e95a140fcb7d",
-    "dvrName": "adfadfadfadfadfadfadfadfadfadfadfadfadfadfadfadfadfadfadfadfadfadfadfadfadfadfadfadfadfadf",
+    "id": "c5a2fc68-f99f-486c-a839-81ab3902f53b",
+    "dvrName": "teste",
     "serial": "FU2K4600025FP",
     "dvrLogin": "admin",
     "dvrPassword": "mactel3023",
-    "photoUrl": "/uploads/1777033075024-c9678a90-2675-4af6-b141-f4cd8a8f4214.png",
-    "createdAt": "2026-04-24T12:17:55.025Z",
-    "updatedAt": "2026-04-24T12:30:12.948Z"
+    "photoUrl": "/uploads/1777041888762-076e0bc1-3668-413f-a2e6-9f9eb3ea830b.png",
+    "creatorDeviceId": "86716481-407d-46b2-8457-c59f6b063452",
+    "creatorDeviceLabel": "PC Windows PC (Chrome)",
+    "creatorDeviceModel": "Windows PC",
+    "creatorDevicePlatform": "Windows",
+    "creatorDeviceType": "pc",
+    "createdAt": "2026-04-24T14:44:48.766Z"
   }
 ]
