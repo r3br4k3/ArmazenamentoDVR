@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0b2a5b" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="MACTEL LOGIN DVRs" />
+    <title>MACTEL LOGIN DVRs</title>
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" type="image/png" sizes="64x64" href="icons/favicon-64.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="bg-layer"></div>
+    <main class="container">
+      <header class="topbar">
+        <div class="topbar-main">
+          <div>
+            <h1>MACTEL LOGIN DVRs</h1>
+            <p>Cadastro rapido de serial, login e senha via foto do QR.</p>
+          </div>
+          <button id="installAppBtn" class="ghost install-btn" type="button" hidden>Instalar app</button>
+        </div>
+      </header>
+
+      <section id="appSection">
+        <article class="panel">
+          <div class="section-head">
+            <h2>Lista de DVRs</h2>
+            <p>Sem login e sem cadastro de usuario. Registro compartilhado para a equipe.</p>
+          </div>
+
+          <section id="listPanel">
+            <div class="search-wrap">
+              <input id="searchInput" type="search" placeholder="Pesquisar por nome, serial, login ou senha" />
+            </div>
+            <div id="recordsList" class="records"></div>
+          </section>
+        </article>
+      </section>
+
+      <button id="addBtn" class="fab" type="button" aria-label="Adicionar DVR">+</button>
+
+      <section id="modal" class="modal" hidden>
+        <article class="modal-card panel">
+          <div class="modal-head">
+            <h2 id="modalTitle">Novo DVR</h2>
+            <button id="closeModalBtn" class="ghost" type="button">Fechar</button>
+          </div>
+
+          <form id="recordForm" class="form-grid" enctype="multipart/form-data">
+            <input name="dvrName" placeholder="Nome do DVR (ex.: Loja Centro)" required />
+            <input id="serialInput" name="serial" placeholder="Serial (auto via QR)" required />
+            <input name="dvrLogin" placeholder="Login do DVR (padrao: admin)" />
+            <input name="dvrPassword" placeholder="Senha do DVR (padrao: mactel3023)" />
+            <button id="scanQrBtn" class="ghost" type="button">Ler QR pela camera</button>
+            <div class="file-picker-wrap">
+              <input id="photoInput" class="file-input-hidden" name="photo" type="file" accept="image/*" />
+              <label for="photoInput" class="file-picker-btn">Escolher imagem do DVR</label>
+              <span id="photoFileName" class="file-picker-name">Nenhum arquivo selecionado</span>
+            </div>
+            <button id="saveRecordBtn" type="submit">Salvar DVR</button>
+          </form>
+        </article>
+      </section>
+
+      <section id="scannerModal" class="scanner-modal" hidden>
+        <article class="scanner-card panel">
+          <div class="modal-head">
+            <h2>Ler QR pela camera</h2>
+            <button id="closeScannerBtn" class="ghost" type="button">Fechar</button>
+          </div>
+          <p id="scannerStatus" class="scanner-status">Aponte a camera para o QR do DVR.</p>
+          <div class="scanner-preview-wrap">
+            <video id="scannerVideo" class="scanner-video" autoplay playsinline muted></video>
+            <div class="scanner-frame"></div>
+          </div>
+        </article>
+      </section>
+
+      <section id="imageModal" class="image-modal" hidden>
+        <button id="closeImageModalBtn" class="image-modal-close" type="button" aria-label="Fechar imagem">Fechar</button>
+        <img id="imageModalPreview" src="" alt="Imagem ampliada do DVR" />
+      </section>
+
+      <p id="feedback" class="feedback" role="status" aria-live="polite"></p>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
