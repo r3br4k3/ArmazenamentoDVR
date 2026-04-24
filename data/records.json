@@ -1,32 +1,11 @@
 [
   {
-    "id": "bc32bd53-41ef-4ef3-b5ba-d473dd296fe3",
-    "dvrName": "teste EDIT",
+    "id": "ae182f0c-cfdb-4ff8-afec-e95a140fcb7d",
+    "dvrName": "adf",
     "serial": "FU2K4600025FP",
     "dvrLogin": "admin",
     "dvrPassword": "mactel3023",
-    "photoUrl": "/uploads/1776988906436-31a1c229-7736-45d5-94d2-1fbcb8d1edaa.png",
-    "createdAt": "2026-04-24T00:01:46.437Z",
-    "updatedAt": "2026-04-24T12:01:12.870Z"
-  },
-  {
-    "id": "5aa2ea0a-88d0-4bb9-a2ea-024b809ed2b3",
-    "dvrName": "sdfsdf",
-    "serial": "FU2K4600025FP",
-    "dvrLogin": "admin",
-    "dvrPassword": "mactel3023",
-    "photoUrl": "",
-    "createdAt": "2026-04-24T11:58:21.319Z",
-    "updatedAt": "2026-04-24T12:02:48.393Z"
-  },
-  {
-    "id": "b0ed4228-6490-40ef-9bfb-c2be84c4283c",
-    "dvrName": "dafs",
-    "serial": "FU2K4600025FP",
-    "dvrLogin": "admin",
-    "dvrPassword": "mactel3023",
-    "photoUrl": "/uploads/1777032054430-47ee58d3-17e8-403c-a5ba-841749ff7c55.png",
-    "createdAt": "2026-04-24T12:00:54.431Z",
-    "updatedAt": "2026-04-24T12:01:18.571Z"
+    "photoUrl": "/uploads/1777033075024-c9678a90-2675-4af6-b141-f4cd8a8f4214.png",
+    "createdAt": "2026-04-24T12:17:55.025Z"
   }
 ]

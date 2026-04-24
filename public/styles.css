@@ -293,6 +293,41 @@ button:hover {
   width: min(620px, 100%);
 }
 
+.delete-confirm-card {
+  display: grid;
+  gap: 12px;
+}
+
+.delete-confirm-text {
+  margin: 0;
+  color: var(--text);
+}
+
+.delete-password-wrap {
+  display: grid;
+  gap: 8px;
+}
+
+.delete-password-wrap[hidden] {
+  display: none !important;
+}
+
+.delete-password-wrap label {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.delete-confirm-error {
+  margin: 0;
+  min-height: 20px;
+}
+
+.delete-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .modal-head {
   display: flex;
   justify-content: space-between;

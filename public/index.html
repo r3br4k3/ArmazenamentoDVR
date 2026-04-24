@@ -93,6 +93,25 @@
         <img id="imageModalPreview" src="" alt="Imagem ampliada do DVR" />
       </section>
 
+      <section id="deleteConfirmModal" class="modal" hidden>
+        <article class="modal-card panel delete-confirm-card">
+          <div class="modal-head">
+            <h2>Confirmar exclusao</h2>
+            <button id="closeDeleteConfirmBtn" class="ghost" type="button">Fechar</button>
+          </div>
+          <p id="deleteConfirmText" class="delete-confirm-text">Voce tem certeza que deseja excluir os dados deste DVR?</p>
+          <div id="deletePasswordWrap" class="delete-password-wrap" hidden>
+            <label for="deletePasswordInput">Senha de autorizacao</label>
+            <input id="deletePasswordInput" type="password" autocomplete="off" placeholder="Digite a senha" />
+          </div>
+          <p id="deleteConfirmError" class="feedback error delete-confirm-error" role="status" aria-live="polite"></p>
+          <div class="delete-confirm-actions">
+            <button id="cancelDeleteBtn" class="ghost" type="button">Cancelar</button>
+            <button id="confirmDeleteBtn" type="button">Excluir DVR</button>
+          </div>
+        </article>
+      </section>
+
       <p id="feedback" class="feedback" role="status" aria-live="polite"></p>
     </main>
 

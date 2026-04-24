@@ -5,8 +5,16 @@ const installAppBtn = document.getElementById("installAppBtn");
 const modal = document.getElementById("modal");
 const scannerModal = document.getElementById("scannerModal");
 const imageModal = document.getElementById("imageModal");
+const deleteConfirmModal = document.getElementById("deleteConfirmModal");
 const imageModalPreview = document.getElementById("imageModalPreview");
 const closeImageModalBtn = document.getElementById("closeImageModalBtn");
+const closeDeleteConfirmBtn = document.getElementById("closeDeleteConfirmBtn");
+const cancelDeleteBtn = document.getElementById("cancelDeleteBtn");
+const confirmDeleteBtn = document.getElementById("confirmDeleteBtn");
+const deleteConfirmText = document.getElementById("deleteConfirmText");
+const deletePasswordWrap = document.getElementById("deletePasswordWrap");
+const deletePasswordInput = document.getElementById("deletePasswordInput");
+const deleteConfirmError = document.getElementById("deleteConfirmError");
 const addBtn = document.getElementById("addBtn");
 const closeModalBtn = document.getElementById("closeModalBtn");
 const closeScannerBtn = document.getElementById("closeScannerBtn");
@@ -19,6 +27,7 @@ const photoFileName = document.getElementById("photoFileName");
 const scannerStatus = document.getElementById("scannerStatus");
 const scannerVideo = document.getElementById("scannerVideo");
 const serialInput = document.getElementById("serialInput");
+const DEVICE_ID_STORAGE_KEY = "mactelDeviceId";
 
 let allRecords = [];
 let editingRecordId = "";
@@ -28,6 +37,28 @@ let barcodeDetector = null;
 let deferredInstallPrompt = null;
 const overlayStack = [];
 let generatedQrCardUrl = "";
+let pendingDeleteRecordId = "";
+let editAdminPassword = "";
+const deviceId = getOrCreateDeviceId();
+
+function createDeviceId() {
+  if (window.crypto?.randomUUID) {
+    return window.crypto.randomUUID();
+  }
+
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function getOrCreateDeviceId() {
+  const current = String(localStorage.getItem(DEVICE_ID_STORAGE_KEY) || "").trim();
+  if (current) {
+    return current;
+  }
+
+  const created = createDeviceId();
+  localStorage.setItem(DEVICE_ID_STORAGE_KEY, created);
+  return created;
+}
 
 function pushOverlayState(type) {
   overlayStack.push(type);
@@ -39,6 +70,7 @@ function hideModalInternal() {
   recordForm.reset();
   photoFileName.textContent = "Nenhum arquivo selecionado";
   generatedQrCardUrl = "";
+  editAdminPassword = "";
   editingRecordId = "";
   setModalMode(false);
 }
@@ -77,6 +109,15 @@ function hideImageInternal() {
   imageModalPreview.src = "";
 }
 
+function hideDeleteConfirmInternal() {
+  deleteConfirmModal.hidden = true;
+  pendingDeleteRecordId = "";
+  deletePasswordWrap.hidden = true;
+  deletePasswordInput.value = "";
+  deleteConfirmError.textContent = "";
+  confirmDeleteBtn.disabled = false;
+}
+
 function closeTopOverlayFromHistory() {
   const top = overlayStack.pop();
   if (top === "scanner") {
@@ -86,6 +127,11 @@ function closeTopOverlayFromHistory() {
 
   if (top === "image") {
     hideImageInternal();
+    return true;
+  }
+
+  if (top === "deleteConfirm") {
+    hideDeleteConfirmInternal();
     return true;
   }
 
@@ -114,6 +160,11 @@ function closeOverlay(type) {
     return;
   }
 
+  if (type === "deleteConfirm") {
+    hideDeleteConfirmInternal();
+    return;
+  }
+
   if (type === "modal") {
     hideModalInternal();
   }
@@ -133,7 +184,9 @@ async function api(url, options = {}) {
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
-    throw new Error(data.message || "Erro inesperado");
+    const error = new Error(data.message || "Erro inesperado");
+    error.payload = data;
+    throw error;
   }
 
   return data;
@@ -261,6 +314,38 @@ function closeImageModal() {
   closeOverlay("image");
 }
 
+function closeDeleteConfirmModal() {
+  closeOverlay("deleteConfirm");
+}
+
+async function deleteRecordWithGuard(id, password = "") {
+  const response = await fetch(`/api/records/${id}`, {
+    method: "DELETE",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ adminPassword: password, deviceId }),
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const error = new Error(data.message || "Erro inesperado");
+    error.payload = data;
+    throw error;
+  }
+
+  return data;
+}
+
+function openDeleteConfirmModal(record) {
+  pendingDeleteRecordId = record.id;
+  deleteConfirmText.textContent = "Voce tem certeza que deseja excluir os dados deste DVR?";
+  deleteConfirmError.textContent = "";
+  deletePasswordInput.value = "";
+  deletePasswordWrap.hidden = true;
+  deleteConfirmModal.hidden = false;
+  pushOverlayState("deleteConfirm");
+}
+
 function escapeHtml(value) {
   return String(value)
     .replace(/&/g, "&amp;")
@@ -325,6 +410,7 @@ async function loadRecords() {
 
 addBtn.addEventListener("click", () => {
   setFeedback("");
+  editAdminPassword = "";
   editingRecordId = "";
   setModalMode(false);
   openModal();
@@ -332,6 +418,8 @@ addBtn.addEventListener("click", () => {
 
 closeModalBtn.addEventListener("click", closeModal);
 closeImageModalBtn.addEventListener("click", closeImageModal);
+closeDeleteConfirmBtn.addEventListener("click", closeDeleteConfirmModal);
+cancelDeleteBtn.addEventListener("click", closeDeleteConfirmModal);
 closeScannerBtn.addEventListener("click", closeScannerModal);
 scanQrBtn.addEventListener("click", openScannerModal);
 installAppBtn.addEventListener("click", async () => {
@@ -367,6 +455,12 @@ imageModal.addEventListener("click", (event) => {
   }
 });
 
+deleteConfirmModal.addEventListener("click", (event) => {
+  if (event.target === deleteConfirmModal) {
+    closeDeleteConfirmModal();
+  }
+});
+
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && overlayStack.length > 0) {
     history.back();
@@ -393,6 +487,35 @@ window.addEventListener("appinstalled", () => {
 });
 
 searchInput.addEventListener("input", applySearch);
+
+confirmDeleteBtn.addEventListener("click", async () => {
+  if (!pendingDeleteRecordId) {
+    closeDeleteConfirmModal();
+    return;
+  }
+
+  confirmDeleteBtn.disabled = true;
+  deleteConfirmError.textContent = "";
+
+  try {
+    const password = String(deletePasswordInput.value || "").trim();
+    await deleteRecordWithGuard(pendingDeleteRecordId, password);
+    closeDeleteConfirmModal();
+    setFeedback("Registro removido.");
+    await loadRecords();
+  } catch (error) {
+    const payload = error.payload || {};
+    if (payload.requiresPassword) {
+      deletePasswordWrap.hidden = false;
+      deleteConfirmText.textContent = "Voce nao e o usuario que criou este dvr. Para excluir, informe a senha de admin.";
+      deletePasswordInput.focus();
+    }
+
+    deleteConfirmError.textContent = error.message;
+  } finally {
+    confirmDeleteBtn.disabled = false;
+  }
+});
 
 photoInput.addEventListener("change", async () => {
   if (!photoInput.files?.length) {
@@ -421,24 +544,54 @@ photoInput.addEventListener("change", async () => {
 
 recordForm.addEventListener("submit", async (event) => {
   event.preventDefault();
-  const body = new FormData(recordForm);
-  if (generatedQrCardUrl && !photoInput.files?.length) {
-    body.set("qrCardImageUrl", generatedQrCardUrl);
-  }
-
   const isEditing = Boolean(editingRecordId);
   const endpoint = isEditing ? `/api/records/${editingRecordId}` : "/api/records";
   const method = isEditing ? "PUT" : "POST";
 
+  function createBody(adminPassword = "") {
+    const body = new FormData(recordForm);
+    body.set("deviceId", deviceId);
+    if (generatedQrCardUrl && !photoInput.files?.length) {
+      body.set("qrCardImageUrl", generatedQrCardUrl);
+    }
+    if (adminPassword) {
+      body.set("adminPassword", adminPassword);
+    }
+    return body;
+  }
+
   try {
     await api(endpoint, {
       method,
-      body,
+      body: createBody(editAdminPassword),
     });
     setFeedback(isEditing ? "DVR atualizado com sucesso." : "DVR salvo com sucesso.");
     closeModal();
     await loadRecords();
   } catch (error) {
+    if (isEditing && error.payload?.requiresPassword) {
+      const password = window.prompt("Voce nao e o usuario que criou este dvr. Informe a senha de admin para editar:") || "";
+      if (!String(password).trim()) {
+        setFeedback(error.message, true);
+        return;
+      }
+
+      try {
+        editAdminPassword = String(password).trim();
+        await api(endpoint, {
+          method,
+          body: createBody(editAdminPassword),
+        });
+        setFeedback("DVR atualizado com sucesso.");
+        closeModal();
+        await loadRecords();
+        return;
+      } catch (secondError) {
+        setFeedback(secondError.message, true);
+        return;
+      }
+    }
+
     setFeedback(error.message, true);
   }
 });
@@ -457,6 +610,7 @@ recordsList.addEventListener("click", async (event) => {
     if (!record) return;
 
     editingRecordId = id;
+    editAdminPassword = "";
     setModalMode(true);
     recordForm.elements.dvrName.value = record.dvrName || "";
     recordForm.elements.serial.value = record.serial || "";
@@ -474,13 +628,9 @@ recordsList.addEventListener("click", async (event) => {
   const id = button.dataset.id;
   if (!id) return;
 
-  try {
-    await api(`/api/records/${id}`, { method: "DELETE" });
-    setFeedback("Registro removido.");
-    await loadRecords();
-  } catch (error) {
-    setFeedback(error.message, true);
-  }
+  const record = allRecords.find((r) => r.id === id);
+  if (!record) return;
+  openDeleteConfirmModal(record);
 });
 
 (async function bootstrap() {

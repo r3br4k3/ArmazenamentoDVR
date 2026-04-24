@@ -20,6 +20,7 @@ const { readJson, writeJson } = require("./lib/store");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const ADMIN_PASSWORD = "p3p3r0n1";
 
 const uploadsDir = path.join(__dirname, "uploads");
 if (!fs.existsSync(uploadsDir)) {
@@ -65,6 +66,19 @@ function normalizePhotoUrl(value) {
   }
 
   return `/uploads/${safeName}`;
+}
+
+function canManageRecord(record, deviceId, adminPassword) {
+  const ownerId = String(record.creatorDeviceId || "").trim();
+  if (!ownerId) {
+    return true;
+  }
+
+  if (ownerId === deviceId) {
+    return true;
+  }
+
+  return adminPassword === ADMIN_PASSWORD;
 }
 
 function escapeXml(value) {
@@ -522,6 +536,7 @@ app.post("/api/records", upload.single("photo"), async (req, res) => {
   const dvrName = String(payload.dvrName || "").trim();
   const dvrLogin = String(payload.dvrLogin || "").trim() || "admin";
   const dvrPassword = String(payload.dvrPassword || "").trim() || "mactel3023";
+  const deviceId = String(payload.deviceId || "").trim();
 
   if (!serial && req.file) {
     try {
@@ -543,6 +558,7 @@ app.post("/api/records", upload.single("photo"), async (req, res) => {
     dvrLogin,
     dvrPassword,
     photoUrl: req.file ? `/uploads/${req.file.filename}` : normalizePhotoUrl(payload.qrCardImageUrl),
+    creatorDeviceId: deviceId,
     createdAt: new Date().toISOString(),
   };
 
@@ -568,6 +584,16 @@ app.put("/api/records/:id", upload.single("photo"), async (req, res) => {
   const dvrName = String(payload.dvrName || "").trim();
   const dvrLogin = String(payload.dvrLogin || "").trim() || "admin";
   const dvrPassword = String(payload.dvrPassword || "").trim() || "mactel3023";
+  const deviceId = String(payload.deviceId || "").trim();
+  const adminPassword = String(payload.adminPassword || "").trim();
+
+  if (!canManageRecord(current, deviceId, adminPassword)) {
+    res.status(403).json({
+      message: "Voce nao tem autorizacao para excluir este DVR.",
+      requiresPassword: true,
+    });
+    return;
+  }
 
   if (!serial && req.file) {
     try {
@@ -610,6 +636,7 @@ app.put("/api/records/:id", upload.single("photo"), async (req, res) => {
     dvrLogin,
     dvrPassword,
     photoUrl,
+    creatorDeviceId: current.creatorDeviceId || deviceId,
     updatedAt: new Date().toISOString(),
   };
 
@@ -625,6 +652,18 @@ app.delete("/api/records/:id", (req, res) => {
 
   if (idx === -1) {
     res.status(404).json({ message: "Registro nao encontrado" });
+    return;
+  }
+
+  const current = records[idx];
+  const deviceId = String(req.body?.deviceId || "").trim();
+  const adminPassword = String(req.body?.adminPassword || "").trim();
+
+  if (!canManageRecord(current, deviceId, adminPassword)) {
+    res.status(403).json({
+      message: "voce nao e o usuario que criou este dvr",
+      requiresPassword: true,
+    });
     return;
   }
 
